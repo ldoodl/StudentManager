@@ -1,7 +1,9 @@
 package com.example.studentmanagementweb.controller;
 
+import com.example.studentmanagementweb.common.Result;
 import com.example.studentmanagementweb.model.Student;
 import com.example.studentmanagementweb.service.StudentService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,8 +17,8 @@ public class StudentController {
     private StudentService studentService;
 
     @GetMapping
-    public List<Student> getAll() {
-        return studentService.findAllStudents();
+    public Result<List<Student>> getAll() {
+        return Result.success(studentService.findAllStudents());
     }
 
     @GetMapping("/{id}")
@@ -25,17 +27,34 @@ public class StudentController {
     }
 
     @PostMapping
-    public boolean add(@RequestBody Student student) {
-        return studentService.addStudent(student);
+    public Result<String> add(@Valid @RequestBody Student student) {
+        boolean success = studentService.addStudent(student);
+        if (success) {
+            return Result.success("添加成功");
+        } else {
+            return Result.error("学号已存在或者添加失败");
+        }
     }
 
     @PutMapping
-    public boolean update(@RequestBody Student student) {
-        return studentService.updateStudent(student);
+    public Result<String> update(@Valid @RequestBody Student student) {
+        boolean success = studentService.updateStudent(student);
+
+        if (success) {
+            return Result.success("修改成功");
+        } else {
+            return Result.error("学号不存在或者修改失败");
+        }
     }
 
     @DeleteMapping("/{id}")
-    public boolean delete(@PathVariable String id) {
-        return studentService.deleteStudent(id);
+    public Result<String> delete(@PathVariable String id) {
+        boolean success = studentService.deleteStudent(id);
+
+        if (success) {
+            return Result.success("删除成功");
+        } else {
+            return Result.error("删除失败，学号不存在");
+        }
     }
 }

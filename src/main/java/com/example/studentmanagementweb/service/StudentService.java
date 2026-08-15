@@ -4,6 +4,7 @@ import com.example.studentmanagementweb.dao.StudentMapper;
 import com.example.studentmanagementweb.model.Student;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.DoubleSummaryStatistics;
@@ -25,6 +26,7 @@ public class StudentService {
         return studentMapper.findById(id);
     }
 
+    @Transactional
     public boolean addStudent(Student student) {
         if (studentMapper.findById(student.getId()) != null) {
             return false;
@@ -32,10 +34,12 @@ public class StudentService {
         return studentMapper.add(student) > 0;
     }
 
+    @Transactional
     public boolean updateStudent(Student student) {
         return studentMapper.update(student) > 0;
     }
 
+    @Transactional
     public boolean deleteStudent(String id) {
         return studentMapper.deleteById(id) > 0;
     }

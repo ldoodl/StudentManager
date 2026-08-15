@@ -1,13 +1,25 @@
 package com.example.studentmanagementweb.model;
 
 import java.io.Serializable;
+//import jakarta.validation.*;
+import jakarta.validation.constraints.*;
 
 public class Student implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    @NotBlank(message = "学号不能为空")
     private String id;
+
+    @NotBlank(message = "姓名不能为空")
+    @Size(min = 1, max = 20, message = "姓名长度必须在1-20之间")
     private String name;
+
+    @Min(value = 1, message = "年龄最小为1")
+    @Max(value = 150, message = "年龄最大为150")
     private int age;
+
+    @Min(value = 0, message = "成绩最小为0")
+    @Max(value = 100, message = "成绩最大为150")
     private double score;
 
     public Student (String id, String name, int age, double score) {

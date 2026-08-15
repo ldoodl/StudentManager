@@ -3,8 +3,6 @@ package com.example.studentmanagementweb.dao;
 import com.example.studentmanagementweb.model.Student;
 import org.apache.ibatis.annotations.*;
 
-import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
 @Mapper
