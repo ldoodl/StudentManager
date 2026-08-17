@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎓 学生管理系统</title>
+    <!-- Bootstrap 5 CSS (CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-primary"><i class="fas fa-graduation-cap"></i> 学生管理看板</h2>
+        </div>
+    </div>
+
+    <!-- 工具栏：搜索 + 新增按钮 -->
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
+            <div class="input-group">
+                <input type="text" id="searchKeyword" class="form-control" placeholder="输入姓名搜索..."
+                       oninput="loadData(1)">
+                <button class="btn btn-outline-secondary" type="button" onclick="loadData(1)">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+                <button class="btn btn-outline-danger" type="button" onclick="clearSearch()">
+                    <i class="fas fa-times"></i> 清除
+                </button>
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-success" onclick="openAddModal()">
+                <i class="fas fa-plus"></i> 新增学生
+            </button>
+        </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+            <tr>
+                <th>学号</th>
+                <th>姓名</th>
+                <th>年龄</th>
+                <th>成绩</th>
+                <th style="width: 200px;">操作</th>
+            </tr>
+            </thead>
+            <tbody id="dataBody">
+            <!-- 由 JavaScript 动态渲染 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 分页导航 -->
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center" id="pageNav">
+            <!-- 由 JavaScript 动态渲染 -->
+        </ul>
+    </nav>
+</div>
+
+<!-- ========== 新增/修改 模态框 ========== -->
+<div class="modal fade" id="studentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">新增学生</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="studentForm">
+                    <input type="hidden" id="editId" value="">
+                    <div class="mb-3">
+                        <label for="inputId" class="form-label">学号</label>
+                        <input type="text" class="form-control" id="inputId" placeholder="例如 S001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputName" class="form-label">姓名</label>
+                        <input type="text" class="form-control" id="inputName" placeholder="例如 张三" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputAge" class="form-label">年龄</label>
+                        <input type="number" class="form-control" id="inputAge" placeholder="例如 20" min="1" max="150" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputScore" class="form-label">成绩</label>
+                        <input type="number" class="form-control" id="inputScore" placeholder="例如 85.5" min="0" max="100" step="0.1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="modalSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 依赖的 JS 库 ========== -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+    // ---------- 全局变量 ----------
+    const API_BASE = '/api/students';        // 后端 API 前缀
+    let currentPage = 1;
+    const pageSize = 5;                      // 每页显示条数
+    let modalInstance = null;                // 模态框实例
+
+    // ---------- 工具函数 ----------
+    function getApiUrl(page, keyword) {
+        // 如果有搜索关键词，使用搜索接口（后端已实现），否则使用分页接口
+        if (keyword && keyword.trim() !== '') {
+            return `${API_BASE}/search?keyword=${encodeURIComponent(keyword.trim())}`;
+        } else {
+            return `${API_BASE}/page?pageNum=${page}&pageSize=${pageSize}`;
+        }
+    }
+
+    // ---------- 加载数据（核心） ----------
+    async function loadData(page = 1) {
+        const keyword = document.getElementById('searchKeyword').value.trim();
+        currentPage = page;
+
+        try {
+            const url = getApiUrl(page, keyword);
+            const response = await axios.get(url);
+            // 统一响应格式 Result<T>，数据在 data 字段
+            const result = response.data;
+            if (result.code !== 200) {
+                alert('获取数据失败：' + result.message);
+                return;
+            }
+
+            let list = [];
+            let total = 0;
+            // 判断是分页接口（返回 PageInfo）还是搜索接口（返回 List）
+            if (url.includes('/page')) {
+                // 分页接口返回 PageInfo 对象，包含 list 和 total
+                const pageInfo = result.data;
+                list = pageInfo.list || [];
+                total = pageInfo.total || 0;
+                renderPagination(page, total);
+            } else {
+                // 搜索接口返回 List
+                list = result.data || [];
+                total = list.length;
+                // 搜索时隐藏分页（或显示全部）
+                document.getElementById('pageNav').innerHTML = '';
+            }
+
+            renderTable(list);
+        } catch (error) {
+            console.error('加载数据异常', error);
+            alert('网络异常，请检查后端服务是否正常');
+        }
+    }
+
+    // ---------- 渲染表格 ----------
+    function renderTable(list) {
+        const tbody = document.getElementById('dataBody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">暂无数据</td></tr>`;
+            return;
+        }
+        const rows = list.map(s => `
+            <tr>
+                <td><strong>${s.id}</strong></td>
+                <td>${s.name}</td>
+                <td>${s.age}</td>
+                <td>${s.score}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" onclick="openEditModal('${s.id}')">
+                        <i class="fas fa-edit"></i> 修改
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteStudent('${s.id}')">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        tbody.innerHTML = rows;
+    }
+
+    // ---------- 渲染分页 ----------
+    function renderPagination(current, total) {
+        const totalPages = Math.ceil(total / pageSize);
+        const nav = document.getElementById('pageNav');
+        if (totalPages <= 1) {
+            nav.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        // 上一页
+        html += `<li class="page-item ${current <= 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadData(${current - 1})">«</a>
+                 </li>`;
+        // 页码（最多显示5个）
+        let start = Math.max(1, current - 2);
+        let end = Math.min(totalPages, current + 2);
+        if (end - start < 4) {
+            if (start > 1) start = Math.max(1, end - 4);
+            if (end < totalPages) end = Math.min(totalPages, start + 4);
+        }
+        for (let i = start; i <= end; i++) {
+            html += `<li class="page-item ${i === current ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadData(${i})">${i}</a>
+                     </li>`;
+        }
+        // 下一页
+        html += `<li class="page-item ${current >= totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadData(${current + 1})">»</a>
+                 </li>`;
+        nav.innerHTML = html;
+    }
+
+    // ---------- 清空搜索 ----------
+    function clearSearch() {
+        document.getElementById('searchKeyword').value = '';
+        loadData(1);
+    }
+
+    // ---------- 打开新增模态框 ----------
+    function openAddModal() {
+        document.getElementById('modalTitle').textContent = '新增学生';
+        document.getElementById('editId').value = '';
+        document.getElementById('inputId').value = '';
+        document.getElementById('inputName').value = '';
+        document.getElementById('inputAge').value = '';
+        document.getElementById('inputScore').value = '';
+        // 显示模态框
+        if (!modalInstance) {
+            modalInstance = new bootstrap.Modal(document.getElementById('studentModal'));
+        }
+        modalInstance.show();
+        // 设置保存按钮事件
+        document.getElementById('modalSaveBtn').onclick = saveStudent;
+    }
+
+    // ---------- 打开修改模态框（回填数据） ----------
+    async function openEditModal(id) {
+        try {
+            const resp = await axios.get(`${API_BASE}/${id}`);
+            const result = resp.data;
+            if (result.code !== 200) {
+                alert('获取学生信息失败：' + result.message);
+                return;
+            }
+            const student = result.data;
+            document.getElementById('modalTitle').textContent = '修改学生';
+            document.getElementById('editId').value = student.id;
+            document.getElementById('inputId').value = student.id;
+            document.getElementById('inputId').disabled = true;   // 学号不可修改
+            document.getElementById('inputName').value = student.name;
+            document.getElementById('inputAge').value = student.age;
+            document.getElementById('inputScore').value = student.score;
+            if (!modalInstance) {
+                modalInstance = new bootstrap.Modal(document.getElementById('studentModal'));
+            }
+            modalInstance.show();
+            document.getElementById('modalSaveBtn').onclick = saveStudent;
+        } catch (error) {
+            console.error(error);
+            alert('加载学生信息失败');
+        }
+    }
+
+    // ---------- 保存（新增或修改） ----------
+    async function saveStudent() {
+        const id = document.getElementById('inputId').value.trim();
+        const name = document.getElementById('inputName').value.trim();
+        const age = parseInt(document.getElementById('inputAge').value);
+        const score = parseFloat(document.getElementById('inputScore').value);
+
+        // 简单校验
+        if (!id || !name || isNaN(age) || isNaN(score)) {
+            alert('请完整填写所有字段（学号、姓名、年龄、成绩）');
+            return;
+        }
+        if (age < 1 || age > 150) {
+            alert('年龄必须在 1~150 之间');
+            return;
+        }
+        if (score < 0 || score > 100) {
+            alert('成绩必须在 0~100 之间');
+            return;
+        }
+
+        const isEdit = document.getElementById('editId').value !== '';
+        const payload = { id, name, age, score };
+        let method = isEdit ? 'put' : 'post';
+        let url = API_BASE;
+
+        try {
+            const resp = await axios({ method, url, data: payload });
+            const result = resp.data;
+            if (result.code === 200) {
+                alert(isEdit ? '修改成功' : '添加成功');
+                modalInstance.hide();
+                loadData(currentPage); // 刷新当前页
+            } else {
+                alert('操作失败：' + result.message);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('请求异常，请检查网络或后端日志');
+        }
+    }
+
+    // ---------- 删除 ----------
+    async function deleteStudent(id) {
+        if (!confirm(`确定要删除学号为 ${id} 的学生吗？此操作不可撤销！`)) {
+            return;
+        }
+        try {
+            const resp = await axios.delete(`${API_BASE}/${id}`);
+            const result = resp.data;
+            if (result.code === 200) {
+                alert('删除成功');
+                loadData(currentPage);
+            } else {
+                alert('删除失败：' + result.message);
+            }
+        } catch (error) {
+            console.error(error);
+            alert('删除异常');
+        }
+    }
+
+    // ---------- 页面加载完成后自动加载数据 ----------
+    document.addEventListener('DOMContentLoaded', function() {
+        loadData(1);
+    });
+</script>
+
+</body>
+</html>

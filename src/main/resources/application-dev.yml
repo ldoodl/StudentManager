@@ -13,3 +13,10 @@ logging:
   level:
     com.example.studentmanagementweb.dao: debug   # 打印 SQL 日志，方便调试
     com.example.studentmanagementweb: debug
+
+  logging:
+    level:
+      root: info                    # 全局 info
+      com.example.studentmanagementweb: debug  # 你的包打印 debug
+      org.springframework.web: info
+      org.mybatis: debug

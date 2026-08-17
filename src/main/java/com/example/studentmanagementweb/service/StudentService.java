@@ -9,6 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Comparator;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
@@ -18,6 +22,7 @@ import java.util.stream.Collectors;
 public class StudentService {
 
 
+    private static final Logger log = LoggerFactory.getLogger(StudentService.class);
     @Autowired
     private StudentMapper studentMapper;
 
@@ -63,19 +68,25 @@ public class StudentService {
 
     @Transactional
     public boolean addStudent(Student student) {
+
+        log.info("开始添加学生，学号：{}", student.getId());
         if (studentMapper.findById(student.getId()) != null) {
             return false;
         }
+        log.info("添加成功");
         return studentMapper.add(student) > 0;
     }
 
     @Transactional
     public boolean updateStudent(Student student) {
+        log.info("开始更新学生信息，学号：{}", student.getId());
         return studentMapper.update(student) > 0;
+
     }
 
     @Transactional
     public boolean deleteStudent(String id) {
+        log.info("开始删除学生信息，学号：{}", id);
         return studentMapper.deleteById(id) > 0;
     }
 
