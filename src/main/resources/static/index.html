@@ -17,6 +17,15 @@
         <div class="col">
             <h2 class="text-primary"><i class="fas fa-graduation-cap"></i> 学生管理看板</h2>
         </div>
+        <div class="col text-end">
+            <!-- 新增个人中心按钮 -->
+            <button class="btn btn-outline-info me-2" onclick="openProfileModal()">
+                <i class="fas fa-user-circle"></i> 个人中心
+            </button>
+            <button class="btn btn-outline-danger" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> 退出登录
+            </button>
+        </div>
     </div>
 
     <!-- 工具栏：搜索 + 新增按钮 -->
@@ -36,6 +45,10 @@
         <div class="col-md-6 text-end">
             <button class="btn btn-success" onclick="openAddModal()">
                 <i class="fas fa-plus"></i> 新增学生
+            </button>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;" onchange="importExcel(event)">
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-file-import"></i> 导入 Excel
             </button>
         </div>
     </div>
@@ -102,6 +115,48 @@
         </div>
     </div>
 </div>
+
+
+<!-- ========== 个人中心模态框 ========== -->
+<div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-cog"></i> 个人中心</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 显示当前用户名 -->
+                <div class="mb-3">
+                    <label class="form-label">当前用户</label>
+                    <input type="text" class="form-control" id="profileUsername" disabled>
+                </div>
+                <!-- 修改密码表单 -->
+                <form id="changePasswordForm">
+                    <div class="mb-3">
+                        <label for="oldPassword" class="form-label">原密码</label>
+                        <input type="password" class="form-control" id="oldPassword" placeholder="请输入原密码" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">新密码（至少6位）</label>
+                        <input type="password" class="form-control" id="newPassword" placeholder="请输入新密码" required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">确认新密码</label>
+                        <input type="password" class="form-control" id="confirmPassword" placeholder="再次输入新密码" required>
+                    </div>
+                </form>
+                <div id="profileMsg" class="text-center"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="changePassword()">确认修改</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 <!-- ========== 依赖的 JS 库 ========== -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -300,6 +355,30 @@
         }
     }
 
+
+    function importExcel(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        axios.post('/api/students/import', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }).then(res => {
+            if (res.data.code === 200) {
+                alert('导入成功');
+                loadData(currentPage);
+            } else {
+                alert('导入失败：' + res.data.message);
+            }
+        }).catch(err => {
+            alert('导入异常');
+        });
+        // 重置 input 以便重复选择同一文件
+        event.target.value = '';
+    }
+
+
+
     // ---------- 保存（新增或修改） ----------
     async function saveStudent() {
         const id = document.getElementById('inputId').value.trim();
@@ -366,6 +445,90 @@
     document.addEventListener('DOMContentLoaded', function() {
         loadData(1);
     });
+
+    // 获取模态框实例（全局变量）
+    let profileModalInstance = null;
+
+    // 打开个人中心模态框
+    function openProfileModal() {
+        // 1. 加载当前用户信息
+        axios.get('/api/user/profile')
+            .then(res => {
+                if (res.data.code === 200) {
+                    document.getElementById('profileUsername').value = res.data.data.username;
+                } else {
+                    alert('获取用户信息失败');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('获取用户信息异常');
+            });
+
+        // 2. 清空表单和消息
+        document.getElementById('oldPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        document.getElementById('profileMsg').innerText = '';
+        document.getElementById('profileMsg').className = 'text-center';
+
+        // 3. 显示模态框
+        if (!profileModalInstance) {
+            profileModalInstance = new bootstrap.Modal(document.getElementById('profileModal'));
+        }
+        profileModalInstance.show();
+    }
+
+    // 修改密码
+    async function changePassword() {
+        const oldPwd = document.getElementById('oldPassword').value.trim();
+        const newPwd = document.getElementById('newPassword').value.trim();
+        const confirmPwd = document.getElementById('confirmPassword').value.trim();
+        const msg = document.getElementById('profileMsg');
+
+        // 校验
+        if (!oldPwd || !newPwd || !confirmPwd) {
+            msg.className = 'text-center text-danger';
+            msg.innerText = '请完整填写所有字段';
+            return;
+        }
+        if (newPwd.length < 6) {
+            msg.className = 'text-center text-danger';
+            msg.innerText = '新密码长度至少6位';
+            return;
+        }
+        if (newPwd !== confirmPwd) {
+            msg.className = 'text-center text-danger';
+            msg.innerText = '两次输入的新密码不一致';
+            return;
+        }
+
+        try {
+            const resp = await axios.post('/api/user/change-password', {
+                oldPassword: oldPwd,
+                newPassword: newPwd
+            });
+            const result = resp.data;
+            if (result.code === 200) {
+                msg.className = 'text-center text-success';
+                msg.innerText = '✅ 密码修改成功，请重新登录';
+                // 可选项：延迟关闭模态框并退出登录
+                setTimeout(() => {
+                    profileModalInstance.hide();
+                    logout(); // 退出登录
+                }, 1500);
+            } else {
+                msg.className = 'text-center text-danger';
+                msg.innerText = '❌ ' + result.message;
+            }
+        } catch (error) {
+            console.error(error);
+            msg.className = 'text-center text-danger';
+            msg.innerText = '网络异常，请重试';
+        }
+    }
+
+
 </script>
 
 </body>

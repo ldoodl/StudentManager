@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # ---------- 数据库服务 ----------
+  mysql:
+    image: mysql:8.0
+    container_name: student-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456       # 设置 root 密码
+      MYSQL_DATABASE: student_db        # 自动创建数据库
+      TZ: Asia/Shanghai                 # 容器时区
+    ports:
+      - "3306:3306"                     # 映射端口（方便本地查看）
+    volumes:
+      - mysql_data:/var/lib/mysql       # 数据持久化（防止重启丢失）
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # 启动时自动执行建表脚本
+    healthcheck:                        # 健康检查（确保数据库就绪后再启动应用）
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p123456"]
+      timeout: 20s
+      retries: 10
+
+  # ---------- Spring Boot 应用服务 ----------
+  app:
+    build: .                           # 基于当前目录的 Dockerfile 构建镜像
+    container_name: student-app
+    depends_on:
+      mysql:
+        condition: service_healthy     # 等待 MySQL 健康后再启动
+    environment:
+      # 注意：这里的主机名是 mysql（服务名），而不是 localhost
+      DB_URL: jdbc:mysql://mysql:3306/student_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+      DB_USERNAME: root
+      DB_PASSWORD: 123456
+    ports:
+      - "8080:8080"                     # 映射端口
+
+# 数据卷声明（用于持久化 MySQL 数据）
+volumes:
+  mysql_data:

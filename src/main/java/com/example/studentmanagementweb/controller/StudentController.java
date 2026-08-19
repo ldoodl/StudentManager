@@ -1,16 +1,22 @@
 package com.example.studentmanagementweb.controller;
 
+import com.alibaba.excel.EasyExcel;
 import com.example.studentmanagementweb.common.Result;
 import com.example.studentmanagementweb.model.Student;
 import com.example.studentmanagementweb.service.StudentService;
+import com.example.studentmanagementweb.util.StudentImportListener;
 import com.example.studentmanagementweb.vo.StudentVO;
 
 import com.github.pagehelper.PageInfo;
 import jakarta.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.context.ApplicationContext;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -19,6 +25,9 @@ public class StudentController {
 
     @Autowired
     private StudentService studentService;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     @GetMapping
     public Result<List<StudentVO>> getAll() {
@@ -83,4 +92,17 @@ public class StudentController {
     {
         return Result.success(studentService.findStudentsByPage(pageNum, pageSize));
     }
+    @PostMapping("/import")
+    public Result<String> importStudents(@RequestParam("file")MultipartFile file)
+            throws IOException {
+        if (file.isEmpty()) {
+            return Result.error(400, "文件为空");
+        }
+
+        StudentImportListener listener = applicationContext.getBean(StudentImportListener.class);
+        EasyExcel.read(file.getInputStream(), Student.class, listener).sheet().doRead();
+
+        return Result.success("导入成功");
+    }
+
 }

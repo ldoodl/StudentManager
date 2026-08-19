@@ -17,7 +17,7 @@ public class UserService {
 
 
     public boolean register(String username, String password, String role) {
-        if (userMapper.findByName(username) != null) {
+        if (userMapper.findByUsername(username) != null) {
             return false;
         }
         User user = new User();
@@ -29,11 +29,25 @@ public class UserService {
     }
 
     public User authenticate(String username, String password) {
-        User user = userMapper.findByName(username);
+        User user = userMapper.findByUsername(username);
         if (user != null && passwordEncoder.matches(password, user.getPassword())) {
             return user;
         }
         return null;
+    }
+
+    public User findByUsername (String username) {
+        return userMapper.findByUsername(username);
+    }
+    public boolean changePassword(String username, String oldPassword, String newPassword) {
+        User user = userMapper.findByUsername(username);
+        if (user == null) return false;
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return false;
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updatePassword(user);
+        return true;
     }
 
 }
