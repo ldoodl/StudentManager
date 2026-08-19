@@ -42,12 +42,16 @@ public class StudentController {
 
     @PostMapping
     public Result<String> add(@Valid @RequestBody Student student) {
-        boolean success = studentService.addStudent(student);
-        if (success) {
-            return Result.success("添加成功");
-        } else {
-            return Result.error(400, "学号已存在或者添加失败");
-        }
+
+//        boolean success = studentService.addStudent(student);
+//        if (success) {
+//            return Result.success("添加成功");
+//        } else {
+//            return Result.error(400, "学号已存在或者添加失败");
+//        }
+
+        studentService.addStudent(student);
+        return Result.success("添加成功");
     }
 
     @PutMapping

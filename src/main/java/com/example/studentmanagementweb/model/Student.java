@@ -28,6 +28,9 @@ public class Student implements Serializable {
     @Max(value = 100, message = "成绩最大为150")
     private double score;
 
+    @Size(min = 1, max = 50, message = "创建者的长度必须在1-50之间")
+    private String createdBy;
+
     public Student (String id, String name, int age, double score) {
         this.id = id;
         this.name = name;

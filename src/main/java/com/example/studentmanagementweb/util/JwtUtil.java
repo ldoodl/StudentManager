@@ -46,4 +46,11 @@ public class JwtUtil {
         }
     }
 
+    public void printTokenInfo(String token) {
+        Claims claims = parseToken(token);
+        System.out.println("📦 [JWT内容] 用户名: " + claims.getSubject());
+        System.out.println("📦 [JWT内容] 角色: " + claims.get("role"));
+        System.out.println("📦 [JWT内容] 过期时间: " + claims.getExpiration());
+    }
+
 }

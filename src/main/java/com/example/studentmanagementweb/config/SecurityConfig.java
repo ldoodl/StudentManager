@@ -39,6 +39,8 @@ public class SecurityConfig {
                                 "/static/**",        // 如果有静态资源目录
                                 "/favicon.ico"
                         ).permitAll()
+                        .requestMatchers("/doc.html", "swagger-ui/**", "/v3/api-docs/**", "/webjars/**")
+                        .permitAll()
                         // 3. 其他所有请求（主要是 /api/** 接口）必须认证
                         .anyRequest().authenticated()
                 )
