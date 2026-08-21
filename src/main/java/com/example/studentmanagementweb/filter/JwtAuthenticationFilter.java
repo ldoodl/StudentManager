@@ -27,40 +27,42 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-        throws ServletException,  IOException {
+            throws ServletException, IOException {
+        System.out.println("🔍 [过滤器] 拦截到请求: " + request.getRequestURI());
 
-        try    {
-                System.out.println("🚦 [过滤器] 拦截到请求: " + request.getRequestURI());
+        String authHeader = request.getHeader("Authorization");
+        System.out.println("🔍 [过滤器] Authorization 头: " + authHeader);
 
-                String authHeader = request.getHeader("Authorization");
-                if (authHeader != null && authHeader.startsWith("Bearer")) {
-                    String token = authHeader.substring(7);
-                    if (jwtUtil.validateToken(token)) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            System.out.println("🔍 [过滤器] 提取的 Token: " + token);
 
-                        jwtUtil.printTokenInfo(token);
+            try {
+                if (jwtUtil.validateToken(token)) {
+                    String username = jwtUtil.getUsernameFromToken(token);
+                    System.out.println("🔍 [过滤器] ✅ 用户名: " + username);
 
-                        String username = jwtUtil.getUsernameFromToken(token);
-
-                        System.out.println("🚦 [过滤器] 请求头中的 Token: " + request.getHeader("Authorization"));
-
-                        UserDetails userDetails = User.withUsername(username).password("").authorities(new ArrayList<>()).build();
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                    }
+                    UserDetails userDetails = User.withUsername(username)
+                            .password("")
+                            .authorities(new ArrayList<>())
+                            .build();
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    System.out.println("🔍 [过滤器] ✅ 认证已设置到 SecurityContext");
+                } else {
+                    System.out.println("🔍 [过滤器] ❌ Token 验证失败");
                 }
-                chain.doFilter(request, response);
-            } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json:charset=UTF-8");
-            response.getWriter().write("{\"code\":401,\"message\":\"登录已过期，请重新登录\"}");
-        } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application.json;charst=UTF-8");
-            response.getWriter().write("{\"code\":401,\"message\":\"Token 无效\"}");
+            } catch (Exception e) {
+                System.out.println("🔍 [过滤器] ❌ Token 解析异常: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("🔍 [过滤器] ⚠️ 未携带 Token，跳过认证");
         }
-        }
+
+        chain.doFilter(request, response);
+    }
 
 
 }

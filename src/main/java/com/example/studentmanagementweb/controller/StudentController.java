@@ -10,6 +10,7 @@ import com.example.studentmanagementweb.vo.StudentVO;
 import com.github.pagehelper.PageInfo;
 import jakarta.validation.Valid;
 
+import org.apache.ibatis.annotations.Delete;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.context.ApplicationContext;
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/students")
@@ -76,13 +78,8 @@ public class StudentController {
 
     @DeleteMapping("/{id}")
     public Result<String> delete(@PathVariable String id) {
-        boolean success = studentService.deleteStudent(id);
-
-        if (success) {
+       studentService.deleteStudent(id);
             return Result.success("删除成功");
-        } else {
-            return Result.error(400, "删除失败，学号不存在");
-        }
     }
 
     @GetMapping("/page")
@@ -103,6 +100,25 @@ public class StudentController {
         EasyExcel.read(file.getInputStream(), Student.class, listener).sheet().doRead();
 
         return Result.success("导入成功");
+    }
+    @GetMapping("/deleted")
+    public Result<List<StudentVO>> getDeleted() {
+        return Result.success(studentService.findDeletedStudents());
+    }
+    @GetMapping("/recycle")
+    public Result<List<StudentVO>> getRecycleBin() {
+        return Result.success(studentService.findDeletedStudents());
+    }
+    @PutMapping("/recycle/{id}/restore")
+    public Result<String> restore(@PathVariable String id) {
+        studentService.restoreStudents(id);
+        return Result.success("恢复成功");
+    }
+
+    @Delete("/recycle/{id}/permanent")
+    public Result<String> permanentDelete(@PathVariable String id) {
+        studentService.deleteStudent(id);
+        return Result.success("彻底删除成功");
     }
 
 }
